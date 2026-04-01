@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atomic Work - Business Model Canvas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['Space Grotesk', 'monospace'],
+                    },
+                    colors: {
+                        dark: '#030014',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #030014;
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(79, 70, 229, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(6, 182, 212, 0.15), transparent 25%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .canvas-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 1rem;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .bmc-cell {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bmc-cell:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(6, 182, 212, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .bmc-cell::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.2), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .bmc-cell:hover::before {
+            opacity: 1;
+        }
+
+        /* Specific Cell Highlights */
+        .cell-vp { border-color: rgba(6, 182, 212, 0.3); background: linear-gradient(135deg, rgba(6,182,212,0.05), rgba(79,70,229,0.05)); }
+        .cell-vp::before { background: linear-gradient(to bottom, #06b6d4, #4f46e5); opacity: 1; width: 4px;}
+        
+        .cell-revenue { border-color: rgba(16, 185, 129, 0.2); background: rgba(16, 185, 129, 0.02); }
+        .cell-revenue::before { background: #10b981; opacity: 1; height: 4px; width: 100%; top: auto; bottom: 0;}
+
+        .cell-cost { border-color: rgba(244, 114, 182, 0.2); background: rgba(244, 114, 182, 0.02); }
+        .cell-cost::before { background: #f472b6; opacity: 1; height: 4px; width: 100%; top: auto; bottom: 0;}
+
+        .section-icon {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 1rem;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #9ca3af;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        ul.feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        ul.feature-list li {
+            position: relative;
+            padding-left: 1.2rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+            color: #d1d5db;
+            line-height: 1.5;
+        }
+        ul.feature-list li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: #06b6d4;
+        }
+        ul.feature-list li strong {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* Responsive Grid */
+        @media (max-width: 1024px) {
+            .canvas-grid { display: flex; flex-direction: column; }
+        }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+
+    <header class="max-w-[1400px] mx-auto w-full mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-gray-800 pb-6">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+                    <i class="fas fa-atom text-white text-xl"></i>
+                </div>
+                <h1 class="text-3xl font-bold tracking-tight text-white">Atomic Work</h1>
+            </div>
+            <p class="text-gray-400 font-mono text-sm">Strategic Business Model Canvas</p>
+        </div>
+        <div class="flex gap-4">
+            <div class="bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-sm">
+                <span class="text-gray-500 block text-xs uppercase mb-1">Status</span>
+                <span class="text-green-400 font-bold flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Validated Phase</span>
+            </div>
+            <div class="bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-sm">
+                <span class="text-gray-500 block text-xs uppercase mb-1">Target Market</span>
+                <span class="text-white font-bold">B2B Enterprise</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full flex items-center">
+        <div class="canvas-grid">
+            
+            <div class="bmc-cell col-span-2 row-span-2 flex flex-col">
+                <div class="section-title"><div class="section-icon text-gray-400"><i class="fas fa-link"></i></div> Key Partners</div>
+                <p class="text-xs text-gray-500 mb-4 italic">The network of suppliers and partners that make the business model work.</p>
+                <ul class="feature-list mt-2 flex-1">
+                    <li><strong>Foundation Models:</strong> OpenAI, Anthropic (Commoditizing the intelligence layer).</li>
+                    <li><strong>Cloud Infrastructure:</strong> Vercel, Firebase (For horizontal scaling).</li>
+                    <li><strong>Distribution Partners:</strong> Slack and Microsoft Teams App Stores.</li>
+                    <li><strong>Consulting Agencies:</strong> Digital Transformation consultants as implementation partners.</li>
+                </ul>
+            </div>
+
+            <div class="bmc-cell col-span-2 row-span-1">
+                <div class="section-title"><div class="section-icon text-blue-400"><i class="fas fa-tasks"></i></div> Key Activities</div>
+                <ul class="feature-list mt-2">
+                    <li><strong>Core R&D:</strong> Developing the Agentic Orchestration engine.</li>
+                    <li><strong>AI Tuning:</strong> Fine-tuning prompts for deterministic outputs.</li>
+                    <li><strong>Ecosystem Growth:</strong> Managing the workflow creator marketplace.</li>
+                    <li><strong>Enterprise Sales:</strong> Outbound B2B customer acquisition.</li>
+                </ul>
+            </div>
+
+            <div class="bmc-cell cell-vp col-span-2 row-span-2 flex flex-col justify-center text-center shadow-2xl z-10">
+                <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/50 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
+                    <i class="fas fa-gem text-3xl text-cyan-400"></i>
+                </div>
+                <h2 class="font-mono text-cyan-400 text-sm tracking-widest uppercase mb-2">Value Proposition</h2>
+                <h3 class="text-2xl font-bold text-white mb-4 leading-tight">Zero-UI<br>Enterprise OS</h3>
+                <p class="text-sm text-gray-300 leading-relaxed mb-6">Translating natural language into instant, executable workflows. Empowering enterprises to operate without UI friction or dedicated IT intervention.</p>
+                <div class="mt-auto px-4 py-2 bg-cyan-900/30 border border-cyan-500/30 rounded-lg text-xs text-cyan-200 font-bold inline-block mx-auto">
+                    The App Store for Internal Ops
+                </div>
+            </div>
+
+            <div class="bmc-cell col-span-2 row-span-1">
+                <div class="section-title"><div class="section-icon text-pink-400"><i class="fas fa-heart"></i></div> Customer Relationships</div>
+                <ul class="feature-list mt-2">
+                    <li><strong>Product-Led Growth (PLG):</strong> Self-serve tools for workflow creators.</li>
+                    <li><strong>Dedicated Success:</strong> High-touch technical support for Enterprise Admins.</li>
+                    <li><strong>Community:</strong> Forum and verified creator network.</li>
+                </ul>
+            </div>
+
+            <div class="bmc-cell col-span-2 row-span-2 flex flex-col">
+                <div class="section-title"><div class="section-icon text-purple-400"><i class="fas fa-users"></i></div> Customer Segments</div>
+                <p class="text-xs text-gray-500 mb-4 italic">The different groups of people or organisations the business aims to reach.</p>
+                
+                <div class="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3 mb-4">
+                    <div class="text-purple-400 font-bold text-sm mb-1">Primary Market</div>
+                    <div class="text-white text-lg font-bold">B2B Mid-Market & Enterprise</div>
+                </div>
+
+                <ul class="feature-list flex-1">
+                    <li><strong>The Buyers:</strong> CIOs, CTOs, and VP of Operations (seeking cost reduction & agility).</li>
+                    <li><strong>The Power Users:</strong> HR, IT, and Procurement Admins (building workflows).</li>
+                    <li><strong>The End Users:</strong> All organization employees (triggering workflows via chat).</li>
+                </ul>
+            </div>
+
+            <div class="bmc-cell col-span-2 row-span-1">
+                <div class="section-title"><div class="section-icon text-yellow-400"><i class="fas fa-cube"></i></div> Key Resources</div>
+                <ul class="feature-list mt-2">
+                    <li><strong>Intellectual Property:</strong> Proprietary "Intent-to-Process" Algorithm.</li>
+                    <li><strong>Human Capital:</strong> Top-tier AI and Full-stack Engineering talent.</li>
+                    <li><strong>Compliance:</strong> Enterprise security certifications (SOC2, ISO).</li>
+                </ul>
+            </div>
+
+            <div class="bmc-cell col-span-2 row-span-1">
+                <div class="section-title"><div class="section-icon text-orange-400"><i class="fas fa-truck"></i></div> Channels</div>
+                <ul class="feature-list mt-2">
+                    <li><strong>Direct Sales:</strong> Outbound enterprise sales team.</li>
+                    <li><strong>App Stores:</strong> Slack and Microsoft Teams native integrations.</li>
+                    <li><strong>Viral Loops:</strong> Cross-pollination via the Creator Marketplace.</li>
+                </ul>
+            </div>
+
+            <div class="bmc-cell cell-cost col-span-5 row-span-1">
+                <div class="section-title"><div class="section-icon text-pink-400"><i class="fas fa-tags"></i></div> Cost Structure</div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                    <div class="bg-black/20 rounded-lg p-4 border border-gray-800">
+                        <div class="text-pink-400 mb-2"><i class="fas fa-microchip text-xl"></i></div>
+                        <div class="font-bold text-white text-sm mb-1">AI Infrastructure</div>
+                        <div class="text-xs text-gray-400">LLM API Call Costs (Optimized via dynamic routing to smaller models).</div>
+                    </div>
+                    <div class="bg-black/20 rounded-lg p-4 border border-gray-800">
+                        <div class="text-pink-400 mb-2"><i class="fas fa-server text-xl"></i></div>
+                        <div class="font-bold text-white text-sm mb-1">Cloud Hosting</div>
+                        <div class="text-xs text-gray-400">Scalable serverless infrastructure and database storage (Vercel/GCP).</div>
+                    </div>
+                    <div class="bg-black/20 rounded-lg p-4 border border-gray-800">
+                        <div class="text-pink-400 mb-2"><i class="fas fa-users text-xl"></i></div>
+                        <div class="font-bold text-white text-sm mb-1">Human Capital</div>
+                        <div class="text-xs text-gray-400">R&D, Engineering, and Go-to-Market (Sales/Marketing) salaries.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bmc-cell cell-revenue col-span-5 row-span-1">
+                <div class="section-title"><div class="section-icon text-green-400"><i class="fas fa-money-bill-wave"></i></div> Revenue Streams</div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                    <div class="bg-black/20 rounded-lg p-4 border border-gray-800 relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 text-6xl text-green-500/10"><i class="fas fa-building"></i></div>
+                        <div class="text-green-400 font-mono text-xs uppercase mb-1">Core Revenue</div>
+                        <div class="font-bold text-white text-lg mb-1">B2B SaaS</div>
+                        <div class="text-xs text-gray-400">Recurring monthly subscription based on active seats (Per User/Month).</div>
+                    </div>
+                    <div class="bg-black/20 rounded-lg p-4 border border-gray-800 relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 text-6xl text-green-500/10"><i class="fas fa-bolt"></i></div>
+                        <div class="text-green-400 font-mono text-xs uppercase mb-1">Variable Revenue</div>
+                        <div class="font-bold text-white text-lg mb-1">Usage-Based</div>
+                        <div class="text-xs text-gray-400">Pay-as-you-go model for complex orchestration runs (Compute Tokens).</div>
+                    </div>
+                    <div class="bg-black/20 rounded-lg p-4 border border-gray-800 relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 text-6xl text-green-500/10"><i class="fas fa-store"></i></div>
+                        <div class="text-green-400 font-mono text-xs uppercase mb-1">Platform Revenue</div>
+                        <div class="font-bold text-white text-lg mb-1">Marketplace</div>
+                        <div class="text-xs text-gray-400">30% Take-rate from all premium workflow templates sold on the internal economy.</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>
