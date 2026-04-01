@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atomic Work Manager - Investor Deck</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['Space Grotesk', 'monospace'],
+                    },
+                    colors: {
+                        primary: '#6366f1',
+                        accent: '#f472b6',
+                        dark: '#030014',
+                        atom: '#06b6d4',
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'spin-slow': 'spin 30s linear infinite',
+                        'pulse-glow': 'pulseGlow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'orbit': 'orbit 20s linear infinite',
+                        'expand-ring': 'expandRing 1s ease forwards',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { opacity: 1, boxShadow: '0 0 20px rgba(6, 182, 212, 0.5)' },
+                            '50%': { opacity: .6, boxShadow: '0 0 40px rgba(6, 182, 212, 0.2)' },
+                        },
+                        orbit: {
+                            '0%': { transform: 'rotate(0deg)' },
+                            '100%': { transform: 'rotate(360deg)' },
+                        },
+                        expandRing: {
+                            '0%': { transform: 'scale(0.8)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --neon-blue: #4f46e5;
+            --neon-cyan: #06b6d4;
+            --neon-green: #10b981;
+        }
+
+        body {
+            background-color: #030014;
+            color: white;
+            overflow: hidden;
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* --- GLOBAL KEYFRAMES --- */
+        @keyframes drawLine { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
+        @keyframes nodeAppear { 0% { transform: scale(0) translateY(20px); opacity: 0; } 80% { transform: scale(1.05) translateY(0); opacity: 1; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+        @keyframes growBar { 0% { height: 0%; opacity: 0; } 100% { opacity: 1; } }
+        @keyframes drawPath { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
+        @keyframes fadeInUp { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- BACKGROUND FX --- */
+        .orb { position: absolute; border-radius: 50%; filter: blur(120px); z-index: -2; opacity: 0.5; pointer-events: none; }
+        .orb-1 { top: -20%; left: -20%; width: 60vw; height: 60vw; background: radial-gradient(circle, #4f46e5, transparent); }
+        .orb-2 { bottom: -20%; right: -20%; width: 70vw; height: 70vw; background: radial-gradient(circle, #06b6d4, transparent); }
+        
+        .grid-overlay {
+            position: absolute; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 60px 60px; z-index: -1;
+            mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+            pointer-events: none;
+        }
+
+        /* --- UI COMPONENTS --- */
+        .holo-card {
+            background: var(--glass-bg); backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border); border-top: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4); border-radius: 24px;
+            position: relative; transition: all 0.4s ease;
+        }
+        .holo-card:hover { border-color: rgba(6, 182, 212, 0.4); box-shadow: 0 0 30px rgba(6, 182, 212, 0.2); transform: translateY(-5px); }
+
+        .slide { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: none; align-items: center; justify-content: center; 
+            padding: 4rem; box-sizing: border-box; z-index: 1;
+        }
+        .slide.active { display: flex; z-index: 10; animation: fadeIn 0.5s ease forwards; }
+
+        .gradient-text { background: linear-gradient(135deg, #fff 0%, #a5f3fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 20px rgba(6, 182, 212, 0.3); }
+        
+        /* Navigation */
+        .nav-capsule { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 99px; padding: 0.5rem 1.5rem; display: flex; gap: 1.5rem; align-items: center; z-index: 99999; }
+        .progress-bar { width: 100px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #06b6d4, #4f46e5); width: 0%; transition: width 0.5s ease; }
+
+        /* Specific Elements */
+        .periodic-element { width: 70px; height: 70px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 0.3s; cursor: default; }
+        .periodic-element:hover { background: rgba(6, 182, 212, 0.2); border-color: #06b6d4; transform: scale(1.1); z-index: 10; box-shadow: 0 0 20px rgba(6, 182, 212, 0.4); }
+        .periodic-element.human { border-bottom: 2px solid #f472b6; }
+        .periodic-element.auto { border-bottom: 2px solid #06b6d4; }
+        .periodic-element.logic { border-bottom: 2px solid #10b981; }
+
+        /* Canvas Styles */
+        .canvas-grid { background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px); background-size: 20px 20px; }
+        .flow-node { position: absolute; background: rgba(10, 10, 20, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 180px; opacity: 0; z-index: 20; }
+        .flow-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .flow-line { fill: none; stroke: rgba(255,255,255,0.3); stroke-width: 2.5; stroke-dasharray: 1000; stroke-dashoffset: 1000; }
+        
+        /* Market Planet Cards */
+        .planet-card { border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.5s; position: relative; }
+        .planet-card:hover { transform: scale(1.05); z-index: 10; }
+        .planet-ring { position: absolute; inset: -10px; border: 1px solid rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none; }
+        
+        /* BMC Grid specific */
+        .bmc-cell { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; transition: all 0.3s; }
+        .bmc-cell:hover { background: rgba(6, 182, 212, 0.1); border-color: rgba(6, 182, 212, 0.4); }
+    </style>
+</head>
+<body>
+
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="grid-overlay"></div>
+
+    <div class="fixed top-8 left-8 z-50 flex items-center gap-4">
+        <div class="w-10 h-10 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(6,182,212,0.5)] border border-white/20 relative group flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600">
+            <i class="fas fa-atom text-white text-xl"></i>
+        </div>
+        <div class="font-mono text-sm tracking-[0.2em] text-cyan-200">ATOMIC WORK</div>
+    </div>
+
+    <div class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[99999] nav-capsule">
+        <button onclick="prevSlide()" class="text-gray-400 hover:text-white cursor-pointer px-2"><i class="fas fa-chevron-left text-xl"></i></button>
+        <span class="font-mono text-xs w-12 text-center select-none text-white" id="slide-num">01/16</span>
+        <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+        <button onclick="nextSlide()" class="text-gray-400 hover:text-white cursor-pointer px-2"><i class="fas fa-chevron-right text-xl"></i></button>
+    </div>
+
+    <div class="slide active" id="slide-1" style="display: flex;">
+        <div class="text-center relative z-10 flex flex-col items-center max-w-4xl">
+            <div class="relative w-64 h-64 mb-12">
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-full blur-[60px] opacity-60 animate-pulse-glow"></div>
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-[0_0_40px_white] z-20"></div>
+                <div class="absolute inset-0 border border-cyan-500/30 rounded-full animate-spin-slow"></div>
+                <div class="absolute inset-4 border border-purple-500/30 rounded-full animate-spin-slow" style="animation-direction: reverse;"></div>
+            </div>
+            <h1 class="text-7xl md:text-8xl font-black mb-6 leading-tight tracking-tight">THE PHYSICS <br> OF <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">WORK</span></h1>
+            <p class="text-xl text-gray-400 max-w-2xl mb-10 font-light">Breaking down enterprise chaos into manageable <span class="text-cyan-300 font-medium">Atomic Steps</span>.<br>The first biological hierarchy for process automation.</p>
+            <button onclick="nextSlide()" class="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-8 py-3 rounded-full backdrop-blur-md transition-all cursor-pointer z-50">Initialize</button>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-2">
+        <div class="flex flex-col items-center justify-center w-full max-w-5xl text-center">
+            <h2 class="text-sm font-mono tracking-[0.3em] text-pink-400 mb-6 uppercase">The Paradigm Shift</h2>
+            <h3 class="text-4xl font-bold mb-12 leading-tight">From Static Forms to <span class="gradient-text">Dynamic Orchestration</span></h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+                <div class="holo-card p-8 border-t-4 border-t-red-500 hover:scale-105 transition-transform">
+                    <div class="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mb-6"><i class="fas fa-exclamation-triangle text-red-400"></i></div>
+                    <h4 class="text-xl font-bold text-white mb-3">The Problem</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">You know how enterprise employees waste millions of hours navigating complex, rigid software (like Jira or ServiceNow) just to execute basic internal requests?</p>
+                </div>
+                <div class="holo-card p-8 border-t-4 border-t-cyan-500 hover:scale-105 transition-transform transform md:-translate-y-4">
+                    <div class="w-12 h-12 bg-cyan-500/20 rounded-full flex items-center justify-center mb-6"><i class="fas fa-magic text-cyan-400"></i></div>
+                    <h4 class="text-xl font-bold text-white mb-3">The Solution</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">We provide a Zero-UI, AI-driven operating system. Employees simply type what they need in natural language, and our Agentic Engine dynamically orchestrates the workflow on the fly.</p>
+                </div>
+                <div class="holo-card p-8 border-t-4 border-t-green-500 hover:scale-105 transition-transform">
+                    <div class="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mb-6"><i class="fas fa-rocket text-green-400"></i></div>
+                    <h4 class="text-xl font-bold text-white mb-3">The 10x Impact</h4>
+                    <p class="text-gray-400 text-sm leading-relaxed">In fact, we eliminate the need for hardcoded IT forms entirely, guaranteeing a 10x faster execution time and massively reducing software development and maintenance overhead.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-3">
+        <div class="flex gap-16 items-center w-full max-w-6xl">
+            <div class="w-1/2">
+                <h2 class="text-5xl font-bold mb-8">Biological<br><span class="gradient-text">Hierarchy</span></h2>
+                <p class="text-gray-300 text-lg mb-8">Just as organisms are built from atoms, we structure work from the ground up.</p>
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-center gap-4 text-sm text-gray-400"><div class="w-8 h-8 rounded-full border border-purple-500/50 flex items-center justify-center text-purple-400">4</div><span>Organization (The Organism)</span></div>
+                    <div class="flex items-center gap-4 text-sm text-gray-400"><div class="w-8 h-8 rounded-full border border-blue-500/50 flex items-center justify-center text-blue-400">3</div><span>Process Group (The Material)</span></div>
+                    <div class="flex items-center gap-4 text-sm text-gray-400"><div class="w-8 h-8 rounded-full border border-cyan-500/50 flex items-center justify-center text-cyan-400">2</div><span>Procedure (The Molecule)</span></div>
+                    <div class="flex items-center gap-4 text-lg text-white font-bold p-3 bg-cyan-900/20 rounded-lg border border-cyan-500/30"><div class="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-black">1</div><span>Atomic Step (The Atom)</span></div>
+                </div>
+            </div>
+            <div class="w-1/2 relative h-[500px] flex items-center justify-center pointer-events-none">
+                <div class="absolute w-[450px] h-[450px] border border-gray-700 rounded-full animate-spin-slow"></div>
+                <div class="absolute w-[300px] h-[300px] border border-gray-600 rounded-full animate-spin-slow" style="animation-direction: reverse;"></div>
+                <div class="absolute w-[150px] h-[150px] border border-cyan-500 rounded-full shadow-[0_0_30px_rgba(6,182,212,0.3)]"></div>
+                <div class="absolute w-8 h-8 bg-white rounded-full shadow-[0_0_50px_white] animate-pulse"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-4">
+        <div class="text-center w-full max-w-7xl">
+            <h2 class="text-4xl font-bold mb-10">Periodic Table of Work</h2>
+            <div class="grid grid-cols-8 gap-3 max-w-5xl mx-auto">
+                <div class="col-span-8 flex gap-3 justify-center mb-4">
+                     <div class="periodic-element human"><span class="text-xs text-pink-400 font-bold">In</span><span class="text-[10px] text-gray-400">Input</span></div>
+                     <div class="periodic-element human"><span class="text-xs text-pink-400 font-bold">Ap</span><span class="text-[10px] text-gray-400">Approve</span></div>
+                     <div class="periodic-element human"><span class="text-xs text-pink-400 font-bold">Ma</span><span class="text-[10px] text-gray-400">Manual</span></div>
+                     <div class="periodic-element human"><span class="text-xs text-pink-400 font-bold">Ne</span><span class="text-[10px] text-gray-400">Negotiate</span></div>
+                     <div class="periodic-element human"><span class="text-xs text-pink-400 font-bold">Is</span><span class="text-[10px] text-gray-400">Inspect</span></div>
+                </div>
+                <div class="col-span-8 flex gap-3 justify-center mb-4">
+                    <div class="periodic-element auto bg-cyan-900/20"><span class="text-xs text-cyan-400 font-bold">Ai</span><span class="text-[10px] text-gray-400">AI Parse</span></div>
+                    <div class="periodic-element auto"><span class="text-xs text-cyan-400 font-bold">Db</span><span class="text-[10px] text-gray-400">Insert</span></div>
+                    <div class="periodic-element auto"><span class="text-xs text-cyan-400 font-bold">Ht</span><span class="text-[10px] text-gray-400">HTTP</span></div>
+                    <div class="periodic-element auto"><span class="text-xs text-cyan-400 font-bold">Em</span><span class="text-[10px] text-gray-400">Email</span></div>
+                    <div class="periodic-element auto"><span class="text-xs text-cyan-400 font-bold">Gs</span><span class="text-[10px] text-gray-400">Sheet</span></div>
+                    <div class="periodic-element auto"><span class="text-xs text-cyan-400 font-bold">Sl</span><span class="text-[10px] text-gray-400">Slack</span></div>
+                    <div class="periodic-element auto"><span class="text-xs text-cyan-400 font-bold">Dc</span><span class="text-[10px] text-gray-400">Doc Gen</span></div>
+                </div>
+                <div class="col-span-8 flex gap-3 justify-center">
+                    <div class="periodic-element logic"><span class="text-xs text-green-400 font-bold">Ca</span><span class="text-[10px] text-gray-400">Calc</span></div>
+                    <div class="periodic-element logic"><span class="text-xs text-green-400 font-bold">Ga</span><span class="text-[10px] text-gray-400">Gateway</span></div>
+                    <div class="periodic-element logic"><span class="text-xs text-green-400 font-bold">Va</span><span class="text-[10px] text-gray-400">Validate</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-5">
+        <div class="flex flex-col items-center w-full max-w-7xl">
+            <div class="text-center mb-10"><h2 class="text-5xl font-bold mb-3">Prompt-to-Process</h2><p class="text-gray-400 text-lg">Simply describe your intent.</p></div>
+            <div class="flex w-full gap-8 h-[500px]">
+                <div class="w-1/3 flex flex-col justify-center gap-6">
+                    <div class="relative group">
+                        <div class="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-purple-600 rounded-lg blur opacity-30 group-hover:opacity-60 transition duration-1000"></div>
+                        <div class="relative bg-black ring-1 ring-gray-700 rounded-xl p-6 shadow-2xl">
+                            <div class="flex items-center gap-3 mb-4 text-gray-500 border-b border-gray-800 pb-2"><i class="fas fa-magic text-purple-400"></i><span class="text-xs font-mono tracking-widest uppercase">Magic Builder</span></div>
+                            <div class="font-mono text-lg text-white mb-2">"Create a full employee onboarding workflow."</div>
+                            <div class="flex items-center gap-2 text-purple-400 text-xs mt-4"><span class="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span>Generating Structure...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-2/3 holo-card p-0 relative overflow-hidden bg-[#0c0c0e]">
+                    <div class="absolute inset-0 canvas-grid opacity-30"></div>
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" style="overflow:visible">
+                        <path d="M 350 60 L 350 120" class="flow-line" style="animation: drawLine 1s ease 0.5s forwards" />
+                        <path d="M 350 180 L 350 230" class="flow-line" style="animation: drawLine 1s ease 1.2s forwards" />
+                        <path d="M 350 230 L 150 230 L 150 280" class="flow-line" style="animation: drawLine 1s ease 1.5s forwards" />
+                        <path d="M 350 230 L 350 280" class="flow-line" style="animation: drawLine 1s ease 1.5s forwards" />
+                        <path d="M 350 230 L 550 230 L 550 280" class="flow-line" style="animation: drawLine 1s ease 1.5s forwards" />
+                        <path d="M 150 340 L 150 380 L 350 380" class="flow-line" style="animation: drawLine 1s ease 2.2s forwards" />
+                        <path d="M 350 340 L 350 380" class="flow-line" style="animation: drawLine 1s ease 2.2s forwards" />
+                        <path d="M 550 340 L 550 380 L 350 380 L 350 420" class="flow-line" style="animation: drawLine 1s ease 2.2s forwards" />
+                    </svg>
+                    <div class="absolute inset-0 w-full h-full z-20">
+                        <div class="flow-node" style="top: 20px; left: 260px; animation: nodeAppear 0.5s ease 0.2s forwards;"><div class="flow-icon bg-blue-600/20 text-blue-400"><i class="fas fa-file-signature"></i></div><div><div class="text-[10px] text-gray-400 uppercase">Trigger</div><div class="text-xs font-bold text-white">Contract Signed</div></div></div>
+                        <div class="flow-node" style="top: 120px; left: 260px; animation: nodeAppear 0.5s ease 1.0s forwards;"><div class="flow-icon bg-orange-600/20 text-orange-400"><i class="fas fa-user-plus"></i></div><div><div class="text-[10px] text-gray-400 uppercase">Identity</div><div class="text-xs font-bold text-white">Create Account</div></div></div>
+                        <div class="flow-node active-border" style="top: 280px; left: 60px; animation: nodeAppear 0.5s ease 1.8s forwards;"><div class="flow-icon bg-blue-500/20 text-blue-400"><i class="fab fa-jira"></i></div><div><div class="text-[10px] text-gray-400 uppercase">IT Ops</div><div class="text-xs font-bold text-white">Ship Laptop</div></div></div>
+                        <div class="flow-node active-border" style="top: 280px; left: 260px; animation: nodeAppear 0.5s ease 1.9s forwards;"><div class="flow-icon bg-purple-500/20 text-purple-400"><i class="fab fa-slack"></i></div><div><div class="text-[10px] text-gray-400 uppercase">Team</div><div class="text-xs font-bold text-white">Invite to Slack</div></div></div>
+                        <div class="flow-node active-border" style="top: 280px; left: 460px; animation: nodeAppear 0.5s ease 2.0s forwards;"><div class="flow-icon bg-red-500/20 text-red-400"><i class="far fa-envelope"></i></div><div><div class="text-[10px] text-gray-400 uppercase">Comms</div><div class="text-xs font-bold text-white">Welcome Email</div></div></div>
+                        <div class="flow-node" style="top: 420px; left: 260px; animation: nodeAppear 0.5s ease 2.8s forwards;"><div class="flow-icon bg-green-500/20 text-green-400"><i class="fas fa-check"></i></div><div><div class="text-[10px] text-gray-400 uppercase">Complete</div><div class="text-xs font-bold text-white">Sync HRIS</div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-6">
+        <div class="w-full max-w-6xl flex flex-col items-center">
+            <h2 class="text-4xl font-bold mb-2">Value Proposition Canvas</h2>
+            <p class="text-gray-400 mb-12 font-mono text-sm">Aligning our capabilities directly with customer pains.</p>
+            
+            <div class="flex flex-col md:flex-row w-full gap-12 items-center justify-center">
+                <div class="w-full md:w-5/12 holo-card p-8 flex flex-col relative h-[450px]">
+                    <div class="absolute -top-6 -left-6 w-16 h-16 bg-cyan-500/20 rounded-xl flex items-center justify-center border border-cyan-500/50 shadow-lg backdrop-blur-md z-20"><i class="fas fa-gift text-2xl text-cyan-400"></i></div>
+                    <h3 class="text-xl font-bold text-white mb-6 ml-8 border-b border-gray-700 pb-2">The Solution</h3>
+                    
+                    <div class="flex-1 flex flex-col gap-6">
+                        <div>
+                            <h4 class="text-sm font-mono text-pink-400 mb-2 uppercase"><i class="fas fa-pills mr-2"></i>Pain Relievers</h4>
+                            <ul class="text-sm text-gray-300 space-y-2">
+                                <li>• Eliminates hardcoding via AI intent parsing</li>
+                                <li>• Replaces complex UI with natural chat</li>
+                                <li>• Bypasses IT bottlenecks instantly</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-mono text-green-400 mb-2 uppercase"><i class="fas fa-arrow-trend-up mr-2"></i>Gain Creators</h4>
+                            <ul class="text-sm text-gray-300 space-y-2">
+                                <li>• Creates dynamic workflows on the fly</li>
+                                <li>• Empowers any employee to build automations</li>
+                                <li>• Provides deep, real-time SQL analytics</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-gray-600 text-3xl hidden md:block animate-pulse"><i class="fas fa-exchange-alt"></i></div>
+
+                <div class="w-full md:w-5/12 holo-card p-8 flex flex-col relative h-[450px] rounded-full border-dashed">
+                    <div class="absolute -top-6 -right-6 w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center border border-purple-500/50 shadow-lg backdrop-blur-md z-20"><i class="fas fa-user-astronaut text-2xl text-purple-400"></i></div>
+                    <h3 class="text-xl font-bold text-white mb-6 text-center border-b border-gray-700 pb-2 mx-8">The Customer (Ops & IT)</h3>
+                    
+                    <div class="flex-1 flex flex-col gap-4 justify-center px-6">
+                        <div>
+                            <h4 class="text-sm font-mono text-gray-400 mb-1 uppercase"><i class="fas fa-list-check mr-2"></i>Customer Jobs</h4>
+                            <p class="text-xs text-gray-400 mb-4">Manage employee requests, integrate silos, enforce compliance.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-mono text-red-400 mb-1 uppercase"><i class="far fa-frown mr-2"></i>Pains</h4>
+                            <p class="text-xs text-gray-300 mb-4">Rigid legacy software, huge developer costs, slow execution.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-mono text-blue-400 mb-1 uppercase"><i class="far fa-smile mr-2"></i>Gains</h4>
+                            <p class="text-xs text-gray-300">Autonomy for non-technical staff, rapid deployment, cost reduction.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-10 text-center text-gray-400 text-sm italic">
+                "Our <span class="text-cyan-400">Zero-UI Engine</span> helps <span class="text-purple-400">Enterprise Ops</span> who want to <span class="text-white">automate faster</span> by <span class="text-pink-400">removing UI friction</span> and <span class="text-green-400">generating processes dynamically</span>."
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-7">
+        <div class="w-full max-w-7xl flex flex-col items-center">
+            <h2 class="text-4xl font-bold mb-8">Business Model Canvas</h2>
+            
+            <div class="w-full grid grid-cols-10 gap-3">
+                <div class="col-span-2 bmc-cell flex flex-col gap-2">
+                    <div class="text-xs font-mono text-gray-500 uppercase"><i class="fas fa-link mr-1"></i> Key Partners</div>
+                    <ul class="text-xs text-gray-300 space-y-1 mt-2">
+                        <li>• LLM Providers (OpenAI)</li>
+                        <li>• Cloud Infra (Vercel)</li>
+                        <li>• Integration Platforms</li>
+                        <li>• Consulting Agencies</li>
+                    </ul>
+                </div>
+                
+                <div class="col-span-2 flex flex-col gap-3">
+                    <div class="bmc-cell flex-1 flex flex-col gap-2">
+                        <div class="text-xs font-mono text-gray-500 uppercase"><i class="fas fa-tasks mr-1"></i> Key Activities</div>
+                        <ul class="text-[10px] text-gray-300 space-y-1 mt-1">
+                            <li>• AI Prompt & Model Tuning</li>
+                            <li>• Orchestration Dev</li>
+                            <li>• Enterprise Sales</li>
+                        </ul>
+                    </div>
+                    <div class="bmc-cell flex-1 flex flex-col gap-2">
+                        <div class="text-xs font-mono text-gray-500 uppercase"><i class="fas fa-gem mr-1"></i> Key Resources</div>
+                        <ul class="text-[10px] text-gray-300 space-y-1 mt-1">
+                            <li>• Proprietary AI Engine</li>
+                            <li>• Developer Talent</li>
+                            <li>• Cloud Infrastructure</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-span-2 bmc-cell border border-cyan-500/30 bg-cyan-900/10 flex flex-col gap-2 shadow-[0_0_30px_rgba(6,182,212,0.1)]">
+                    <div class="text-xs font-mono text-cyan-400 uppercase text-center font-bold"><i class="fas fa-gift mr-1"></i> Value Proposition</div>
+                    <div class="text-center mt-4">
+                        <p class="text-sm text-white font-bold mb-2">Zero-UI Enterprise OS</p>
+                        <p class="text-[10px] text-gray-300 leading-relaxed">Translating natural language into instant, executable workflows. Eliminating the need for custom internal software development.</p>
+                    </div>
+                </div>
+
+                <div class="col-span-2 flex flex-col gap-3">
+                    <div class="bmc-cell flex-1 flex flex-col gap-2">
+                        <div class="text-xs font-mono text-gray-500 uppercase"><i class="fas fa-heart mr-1"></i> Customer Rel.</div>
+                        <ul class="text-[10px] text-gray-300 space-y-1 mt-1">
+                            <li>• Dedicated Success Managers</li>
+                            <li>• Self-serve Admin Dashboard</li>
+                        </ul>
+                    </div>
+                    <div class="bmc-cell flex-1 flex flex-col gap-2">
+                        <div class="text-xs font-mono text-gray-500 uppercase"><i class="fas fa-truck mr-1"></i> Channels</div>
+                        <ul class="text-[10px] text-gray-300 space-y-1 mt-1">
+                            <li>• Direct B2B Sales</li>
+                            <li>• Enterprise App Stores (Slack)</li>
+                            <li>• Digital Transformation Consultancies</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-span-2 bmc-cell flex flex-col gap-2">
+                    <div class="text-xs font-mono text-gray-500 uppercase"><i class="fas fa-users mr-1"></i> Cust. Segments</div>
+                    <ul class="text-xs text-gray-300 space-y-2 mt-2">
+                        <li><span class="text-purple-400 font-bold">Mid-Market & Enterprise</span></li>
+                        <li>• Operations (Ops) Teams</li>
+                        <li>• Human Resources (HR)</li>
+                        <li>• IT Support Teams</li>
+                    </ul>
+                </div>
+
+                <div class="col-span-5 bmc-cell flex flex-col gap-2">
+                    <div class="text-xs font-mono text-gray-500 uppercase"><i class="fas fa-tags mr-1"></i> Cost Structure</div>
+                    <div class="flex justify-between mt-2 text-xs text-gray-300 px-4">
+                        <span>• LLM API Consumption</span>
+                        <span>• Cloud Server Infrastructure</span>
+                        <span>• R&D and Sales Salaries</span>
+                    </div>
+                </div>
+
+                <div class="col-span-5 bmc-cell flex flex-col gap-2 border-green-500/20 bg-green-900/5">
+                    <div class="text-xs font-mono text-green-400 uppercase"><i class="fas fa-money-bill-wave mr-1"></i> Revenue Streams</div>
+                    <div class="flex justify-between mt-2 text-xs text-white font-bold px-4">
+                        <span>1. B2B SaaS Subscription (Per Seat)</span>
+                        <span>2. Usage-Based (Per Run)</span>
+                        <span>3. Marketplace Take-Rate (30%)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-8">
+        <div class="text-center w-full max-w-7xl">
+            <h2 class="text-5xl font-bold mb-16"><span class="gradient-text">The Economy Engine</span></h2>
+            <div class="flex justify-center items-stretch gap-8 h-[450px]">
+                <div class="w-1/3 holo-card p-0 flex flex-col overflow-hidden group hover:border-green-500/50 transition-colors duration-500">
+                    <div class="bg-gradient-to-r from-gray-900 to-black p-6 border-b border-gray-800 flex justify-between items-center">
+                        <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-gradient-to-tr from-green-400 to-emerald-600 p-[2px]"><div class="w-full h-full rounded-full bg-black flex items-center justify-center text-xs font-bold">SJ</div></div><div class="text-left"><div class="text-sm font-bold text-white flex items-center gap-2">Sarah Jenkins <i class="fas fa-check-circle text-blue-400 text-xs"></i></div><div class="text-[10px] text-gray-500 tracking-widest uppercase">Verified Creator</div></div></div>
+                        <div class="text-xs font-mono text-green-500 animate-pulse">● LIVE</div>
+                    </div>
+                    <div class="flex-1 p-8 flex flex-col justify-center bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]">
+                        <div class="text-xs text-gray-400 font-mono mb-2 uppercase tracking-widest">Available Balance</div>
+                        <div class="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 mb-8">$4,250.00</div>
+                        <div class="space-y-3"><div class="flex justify-between text-xs text-gray-500 border-b border-gray-800 pb-2"><span>Sales (Today)</span> <span class="text-white">+ $120.00</span></div><div class="flex justify-between text-xs text-gray-500 border-b border-gray-800 pb-2"><span>Downloads</span> <span class="text-white">842</span></div></div>
+                        <button class="mt-auto w-full py-3 bg-green-500/10 border border-green-500/50 text-green-400 rounded-lg font-bold text-sm hover:bg-green-500 hover:text-black transition-all">Initiate Withdrawal</button>
+                    </div>
+                </div>
+                <div class="w-1/3 relative flex flex-col items-center justify-center">
+                    <div class="absolute top-0 w-[2px] h-[50%] bg-gradient-to-b from-transparent via-white to-cyan-500 opacity-50"></div>
+                    <div class="w-32 h-32 relative z-10 animate-float">
+                        <div class="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full animate-pulse-glow"></div>
+                        <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-2xl"><polygon points="50,10 90,90 10,90" fill="none" stroke="url(#prismGradient)" stroke-width="2" /><defs><linearGradient id="prismGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" /><stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" /></linearGradient></defs></svg>
+                        <div class="absolute inset-0 flex items-center justify-center text-xs font-mono text-cyan-300">SPLIT</div>
+                    </div>
+                    <div class="absolute bottom-10 left-10 w-[2px] h-[100px] bg-gradient-to-t from-green-500 to-transparent transform -rotate-45 origin-top"></div>
+                    <div class="absolute bottom-10 right-10 w-[2px] h-[100px] bg-gradient-to-t from-blue-500 to-transparent transform rotate-45 origin-top"></div>
+                    <div class="absolute bottom-20 left-4 text-center"><div class="text-4xl font-bold text-green-400">70%</div><div class="text-[10px] text-gray-500 uppercase tracking-widest">Creator</div></div>
+                    <div class="absolute bottom-20 right-4 text-center"><div class="text-3xl font-bold text-blue-400">30%</div><div class="text-[10px] text-gray-500 uppercase tracking-widest">Platform</div></div>
+                </div>
+                <div class="w-1/3 holo-card p-8 border-t-4 border-t-blue-600 flex flex-col justify-center items-center gap-6 opacity-80 hover:opacity-100 transition-opacity">
+                    <div class="w-20 h-20 rounded-2xl bg-blue-900/20 border border-blue-500/30 flex items-center justify-center shadow-[0_0_30px_rgba(37,99,235,0.2)]"><i class="fas fa-server text-4xl text-blue-400"></i></div>
+                    <div class="text-center"><h3 class="text-xl font-bold text-white mb-2">Sustainable Core</h3><p class="text-sm text-gray-400 leading-relaxed">The 30% take-rate funds continuous innovation, hosting, and security audits.</p></div>
+                    <div class="w-full bg-gray-800 rounded-full h-1 mt-4 overflow-hidden"><div class="bg-blue-500 h-full w-[30%] animate-pulse"></div></div>
+                    <div class="text-[10px] text-gray-600 font-mono w-full text-center">SYSTEM STATUS: OPTIMAL</div>
+                </div>
+            </div>
+           
+        </div>
+    </div>
+
+    <div class="slide" id="slide-9">
+        <div class="text-center w-full max-w-5xl">
+            <h2 class="text-4xl font-bold mb-8"><span class="gradient-text">Atomic Insights</span></h2>
+            <div class="holo-card p-0 overflow-hidden bg-[#0c0c0e] border border-gray-800 shadow-2xl relative max-w-4xl mx-auto">
+                <div class="absolute top-6 right-6 w-64 bg-black/90 border border-gray-700 rounded-lg p-3 font-mono text-[10px] text-gray-400 z-30 shadow-xl" style="animation: fadeInUp 0.5s ease 0.5s forwards; opacity: 0; transform: translateY(10px);">
+                    <div class="flex gap-2 mb-2 border-b border-gray-800 pb-2"><div class="w-2 h-2 rounded-full bg-red-500"></div><div class="w-2 h-2 rounded-full bg-yellow-500"></div><div class="w-2 h-2 rounded-full bg-green-500"></div><span class="ml-auto text-green-500">SQL</span></div>
+                    <span class="text-purple-400">SELECT</span> DATE(created_at), COUNT(*)<br><span class="text-purple-400">FROM</span> runs<br><span class="text-purple-400">WHERE</span> status = <span class="text-green-400">'completed'</span><br><span class="text-purple-400">GROUP BY</span> 1;
+                </div>
+                <div class="p-6 border-b border-gray-800 bg-[#151518]">
+                    <div class="flex gap-4 items-center max-w-3xl mx-auto">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-cyan-900/50"><i class="fas fa-sparkles text-white"></i></div>
+                        <div class="flex-1"><div class="bg-gray-800/50 border border-gray-700 p-4 rounded-2xl rounded-tl-none text-lg text-white font-light text-left">"Show me the daily trend of completed workflows."</div></div>
+                    </div>
+                </div>
+                <div class="p-8 h-96 relative bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-black to-black">
+                    <div class="absolute inset-0 flex items-end justify-between px-16 py-12 z-10">
+                        <div class="w-full mx-1 bg-gradient-to-t from-cyan-900/10 to-cyan-500/80 rounded-t-sm" style="height: 40%; animation: growBar 1s ease 0.1s forwards;"></div>
+                        <div class="w-full mx-1 bg-gradient-to-t from-cyan-900/10 to-cyan-500/80 rounded-t-sm" style="height: 55%; animation: growBar 1s ease 0.2s forwards;"></div>
+                        <div class="w-full mx-1 bg-gradient-to-t from-cyan-900/10 to-cyan-500/80 rounded-t-sm" style="height: 70%; animation: growBar 1s ease 0.4s forwards;"></div>
+                        <div class="w-full mx-1 bg-gradient-to-t from-cyan-900/10 to-cyan-500/80 rounded-t-sm" style="height: 90%; animation: growBar 1s ease 0.8s forwards;"></div>
+                    </div>
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none z-20 px-16 py-12" style="overflow:visible">
+                        <path d="M 0 200 C 50 150, 100 220, 150 100 C 200 130, 250 50, 300 160 C 350 30, 400 100, 450 80" fill="none" stroke="#f472b6" stroke-width="3" stroke-linecap="round" style="stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: drawPath 2s ease 1s forwards;" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-10">
+        <div class="w-full max-w-6xl">
+            <h2 class="text-5xl font-bold mb-16 text-center">Enterprise Grade Core</h2>
+            <div class="grid grid-cols-2 gap-12">
+                <div class="relative group">
+                    <div class="absolute inset-0 bg-green-500/10 blur-[50px] rounded-full opacity-0 group-hover:opacity-50 transition-opacity duration-1000"></div>
+                    <div class="holo-card p-8 border-green-500/30 relative overflow-hidden h-full flex flex-col">
+                        <div class="absolute top-0 right-0 p-4 opacity-20"><i class="fas fa-shield-alt text-9xl text-green-500"></i></div>
+                        <div class="flex items-center gap-4 mb-8 z-10">
+                            <div class="w-14 h-14 rounded-xl bg-green-500/20 flex items-center justify-center border border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.3)]"><i class="fas fa-lock text-2xl text-green-400"></i></div>
+                            <h3 class="text-3xl font-bold text-white">Fortress Security</h3>
+                        </div>
+                        <div class="space-y-6 z-10 flex-1">
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-green-900/10 border border-green-500/20 hover:bg-green-900/20 transition-colors"><div class="mt-1 text-green-400"><i class="fas fa-user-shield"></i></div><div><h4 class="font-bold text-green-300 text-sm">RBAC</h4><p class="text-xs text-gray-400 mt-1">Granular role-based access control for every atom.</p></div></div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-green-900/10 border border-green-500/20 hover:bg-green-900/20 transition-colors"><div class="mt-1 text-green-400"><i class="fas fa-key"></i></div><div><h4 class="font-bold text-green-300 text-sm">AES-256 Encryption</h4><p class="text-xs text-gray-400 mt-1">Data encrypted at-rest and in-transit.</p></div></div>
+                            <div class="flex items-start gap-4 p-4 rounded-xl bg-green-900/10 border border-green-500/20 hover:bg-green-900/20 transition-colors"><div class="mt-1 text-green-400"><i class="fas fa-building"></i></div><div><h4 class="font-bold text-green-300 text-sm">Tenant Isolation</h4><p class="text-xs text-gray-400 mt-1">Strict logical separation of organization data.</p></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <div class="absolute inset-0 bg-blue-500/10 blur-[50px] rounded-full opacity-0 group-hover:opacity-50 transition-opacity duration-1000"></div>
+                    <div class="holo-card p-8 border-blue-500/30 relative overflow-hidden h-full flex flex-col">
+                        <div class="absolute top-0 right-0 p-4 opacity-20"><i class="fas fa-layer-group text-9xl text-blue-500"></i></div>
+                        <div class="flex items-center gap-4 mb-8 z-10">
+                            <div class="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]"><i class="fas fa-server text-2xl text-blue-400"></i></div>
+                            <h3 class="text-3xl font-bold text-white">Hyper-Scale Stack</h3>
+                        </div>
+                        <div class="space-y-4 z-10 flex-1 flex flex-col justify-center">
+                            <div class="relative p-4 rounded-xl bg-blue-900/20 border border-blue-500/30 flex justify-between items-center group-hover:translate-x-2 transition-transform duration-300"><span class="font-mono text-blue-300 text-sm">FRONTEND ENGINE</span><span class="font-bold text-white"><i class="fab fa-react mr-2"></i>React Flow</span></div>
+                            <div class="h-4 w-0.5 bg-blue-500/30 mx-auto"></div>
+                            <div class="relative p-4 rounded-xl bg-blue-900/20 border border-blue-500/30 flex justify-between items-center group-hover:-translate-x-2 transition-transform duration-300"><span class="font-mono text-blue-300 text-sm">DATA LAYER</span><span class="font-bold text-white"><i class="fas fa-database mr-2"></i>Firestore NoSQL</span></div>
+                            <div class="h-4 w-0.5 bg-blue-500/30 mx-auto"></div>
+                            <div class="relative p-4 rounded-xl bg-blue-900/20 border border-blue-500/30 flex justify-between items-center group-hover:translate-x-2 transition-transform duration-300"><span class="font-mono text-blue-300 text-sm">IDENTITY</span><span class="font-bold text-white"><i class="fas fa-fingerprint mr-2"></i>Firebase Auth</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-11">
+        <div class="w-full max-w-6xl flex flex-col items-center">
+            <h2 class="text-4xl font-bold mb-2">Evidence Over Assumptions</h2>
+            <p class="text-gray-400 mb-12 font-mono text-sm">Validated through rigorous Customer Discovery Sprints.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 w-full mb-12">
+                <div class="holo-card p-6 text-center border-t-2 border-t-cyan-500">
+                    <div class="text-4xl font-bold text-white mb-2">50+</div>
+                    <div class="text-xs text-gray-400 uppercase tracking-widest">Interviews Conducted</div>
+                </div>
+                <div class="holo-card p-6 text-center border-t-2 border-t-purple-500">
+                    <div class="text-4xl font-bold text-white mb-2">100%</div>
+                    <div class="text-xs text-gray-400 uppercase tracking-widest">Confirmed Workflow Pain</div>
+                </div>
+                <div class="holo-card p-6 text-center border-t-2 border-t-pink-500">
+                    <div class="text-4xl font-bold text-white mb-2">82%</div>
+                    <div class="text-xs text-gray-400 uppercase tracking-widest">Actively Seeking Solutions</div>
+                </div>
+                <div class="holo-card p-6 text-center border-t-2 border-t-green-500">
+                    <div class="text-4xl font-bold text-white mb-2">Tier 1</div>
+                    <div class="text-xs text-gray-400 uppercase tracking-widest">Strategic Value Motive</div>
+                </div>
+            </div>
+
+            <div class="holo-card p-8 w-full bg-gradient-to-br from-gray-900 to-black">
+                <div class="flex items-start gap-6">
+                    <div class="text-6xl text-cyan-500/50 font-serif">"</div>
+                    <div>
+                        <p class="text-xl text-gray-300 italic leading-relaxed mb-4">We spend months waiting for IT to code a simple onboarding form. If a system could just understand what we want and build the process instantly, it wouldn't just save money—it would completely change how fast we move as a company.</p>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center"><i class="fas fa-user text-gray-400"></i></div>
+                            <div>
+                                <div class="text-sm font-bold text-white">VP of Operations</div>
+                                <div class="text-xs text-gray-500">Mid-Market Logistics Firm (Customer Discovery Participant)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-12">
+        <div class="flex flex-col items-center">
+            <h2 class="text-5xl font-bold mb-12">The Opportunity Universe</h2>
+            <div class="relative w-[600px] h-[600px] flex items-center justify-center">
+                <div class="planet-card w-64 h-64 bg-gray-900 border border-gray-700 shadow-2xl">
+                    <div class="planet-ring" style="border-color: rgba(255,255,255,0.05); animation: spin-slow 30s linear infinite;"></div>
+                    <div class="text-gray-500 text-sm font-mono mb-2">TAM</div>
+                    <div class="text-5xl font-bold text-white">$32B</div>
+                    <div class="text-xs text-gray-500 mt-2">Global Automation</div>
+                </div>
+                <div class="planet-card w-56 h-56 bg-gray-800 border border-gray-600 shadow-2xl">
+                    <div class="planet-ring" style="border-color: rgba(6,182,212,0.2); animation: spin-slow 20s linear infinite reverse;"></div>
+                    <div class="text-cyan-400 text-sm font-mono mb-2">SAM</div>
+                    <div class="text-4xl font-bold text-white">$12B</div>
+                    <div class="text-xs text-gray-400 mt-2">Low-Code / No-Code</div>
+                </div>
+                <div class="planet-card w-48 h-48 bg-gradient-to-br from-cyan-600 to-blue-700 shadow-[0_0_50px_rgba(6,182,212,0.6)] border-none">
+                    <div class="text-white text-sm font-mono mb-2">SOM</div>
+                    <div class="text-4xl font-bold text-white">$1.5B</div>
+                    <div class="text-xs text-blue-200 mt-2">Serviceable Market</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-13">
+        <div class="w-full max-w-6xl flex flex-col items-center">
+            <h2 class="text-5xl font-bold mb-4 text-center">Why We Win</h2>
+            <p class="text-gray-400 mb-8 text-center">The only platform that pays you to automate.</p>
+            <div class="w-full holo-card p-1 overflow-hidden bg-gray-900/50 scale-90">
+                <div class="grid grid-cols-5 text-sm">
+                    <div class="p-4 flex items-center text-gray-500 font-mono text-xs uppercase tracking-widest bg-white/5">Feature</div>
+                    <div class="p-4 flex flex-col items-center border-l border-gray-800 bg-white/5 opacity-50 grayscale"><div class="font-bold text-lg text-orange-500">Zapier</div></div>
+                    <div class="p-4 flex flex-col items-center border-l border-gray-800 bg-white/5 opacity-50 grayscale"><div class="font-bold text-lg text-purple-500">Make</div></div>
+                    <div class="p-4 flex flex-col items-center border-l border-gray-800 bg-white/5 opacity-50 grayscale"><div class="font-bold text-lg text-red-500">n8n</div></div>
+                    <div class="p-4 flex flex-col items-center border-l border-cyan-500/30 bg-cyan-900/30"><div class="font-bold text-lg text-cyan-400">Atomic</div></div>
+
+                    <div class="col-span-5 h-px bg-gray-800"></div>
+                    <div class="p-4 flex items-center text-gray-300 font-bold"><i class="fas fa-hand-holding-dollar text-green-400 w-6"></i> Monetization</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800"><i class="fas fa-times text-gray-600"></i></div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800"><i class="fas fa-times text-gray-600"></i></div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800"><i class="fas fa-times text-gray-600"></i></div>
+                    <div class="p-4 flex items-center justify-center border-l border-cyan-500/30 bg-cyan-900/10 text-green-400 font-bold">70% Share</div>
+
+                    <div class="col-span-5 h-px bg-gray-800"></div>
+                    <div class="p-4 flex items-center text-gray-300 font-bold"><i class="fas fa-brain text-purple-400 w-6"></i> AI Engine</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">Add-on</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">Nodes</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">Self-host</div>
+                    <div class="p-4 flex items-center justify-center border-l border-cyan-500/30 bg-cyan-900/10 text-cyan-300 font-bold">Native Core</div>
+
+                    <div class="col-span-5 h-px bg-gray-800"></div>
+                    <div class="p-4 flex items-center text-gray-300 font-bold"><i class="fas fa-chart-bar text-blue-400 w-6"></i> Analytics</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">Basic</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">History</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">Raw</div>
+                    <div class="p-4 flex items-center justify-center border-l border-cyan-500/30 bg-cyan-900/10 text-white font-bold">Text-to-SQL</div>
+
+                    <div class="col-span-5 h-px bg-gray-800"></div>
+                    <div class="p-4 flex items-center text-gray-300 font-bold"><i class="fas fa-cubes text-yellow-400 w-6"></i> Structure</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">Linear</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">Spaghetti</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">Graph</div>
+                    <div class="p-4 flex items-center justify-center border-l border-cyan-500/30 bg-cyan-900/10 text-white font-bold">Atomic/Bio</div>
+
+                    <div class="col-span-5 h-px bg-gray-800"></div>
+                    <div class="p-4 flex items-center text-gray-300 font-bold"><i class="fas fa-shield-alt text-red-400 w-6"></i> Security</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">SSO</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">Teams</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-500">Self</div>
+                    <div class="p-4 flex items-center justify-center border-l border-cyan-500/30 bg-cyan-900/10 text-white font-bold">RBAC</div>
+
+                    <div class="col-span-5 h-px bg-gray-800"></div>
+                    <div class="p-4 flex items-center text-gray-300 font-bold"><i class="fas fa-tag text-gray-400 w-6"></i> Pricing</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-red-400">High</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-yellow-500">Complex</div>
+                    <div class="p-4 flex items-center justify-center border-l border-gray-800 text-xs text-gray-400">Fair</div>
+                    <div class="p-4 flex items-center justify-center border-l border-cyan-500/30 bg-cyan-900/10 text-green-400 font-bold">Credit</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-14">
+        <div class="w-full max-w-6xl text-center">
+            <h2 class="text-4xl font-bold mb-16">Event Horizon</h2>
+            <div class="grid grid-cols-4 gap-4">
+                <div class="holo-card p-4 border-t-4 border-t-cyan-500">
+                    <div class="text-cyan-400 text-xs font-mono mb-2">Q1 2025</div>
+                    <h4 class="font-bold mb-2">Launch</h4>
+                    <p class="text-xs text-gray-400">Public Beta, Stripe Connect</p>
+                </div>
+                <div class="holo-card p-4 border-t-4 border-t-purple-500 opacity-80">
+                    <div class="text-purple-400 text-xs font-mono mb-2">Q2 2025</div>
+                    <h4 class="font-bold mb-2">Growth</h4>
+                    <p class="text-xs text-gray-400">AI Agents V2, Enterprise SSO</p>
+                </div>
+                <div class="holo-card p-4 border-t-4 border-t-pink-500 opacity-60">
+                    <div class="text-pink-400 text-xs font-mono mb-2">Q3 2025</div>
+                    <h4 class="font-bold mb-2">Scale</h4>
+                    <p class="text-xs text-gray-400">Mobile App, Offline Mode</p>
+                </div>
+                <div class="holo-card p-4 border-t-4 border-t-green-500 opacity-40">
+                    <div class="text-green-400 text-xs font-mono mb-2">Q4 2025</div>
+                    <h4 class="font-bold mb-2">Dominance</h4>
+                    <p class="text-xs text-gray-400">Global Expansion, API Market</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-15">
+        <div class="flex flex-col items-center">
+            <h2 class="text-5xl font-bold mb-12">The Architect</h2>
+            <div class="holo-card p-0 w-full max-w-md overflow-hidden group hover:shadow-[0_0_50px_rgba(99,102,241,0.3)] transition-all duration-500">
+                <div class="h-32 bg-gradient-to-r from-blue-900 to-purple-900 relative"><div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-30"></div></div>
+                <div class="px-8 pb-8 relative text-center">
+                    <div class="w-32 h-32 mx-auto -mt-16 rounded-2xl border-4 border-[#030014] bg-gray-800 overflow-hidden relative shadow-2xl group-hover:scale-105 transition-transform">
+                        <img src="profile.png" onerror="this.style.display='none'; document.getElementById('fallback-profile').style.display='flex'" class="w-full h-full object-cover">
+                        <div id="fallback-profile" class="w-full h-full flex flex-col items-center justify-center bg-gray-800 text-gray-500" style="display:none"><i class="fas fa-user-astronaut text-4xl mb-2"></i><span class="text-[10px]">PHOTO</span></div>
+                    </div>
+                    <h3 class="text-3xl font-bold mt-4 text-white">Saeed Vaali</h3>
+                    <div class="text-cyan-400 font-mono text-sm tracking-widest uppercase mb-6">Founder & CEO</div>
+                    <div class="flex justify-center gap-4 mb-8">
+                        <div class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-300">HR Veteran</div>
+                        <div class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-300">Domain Expert</div>
+                        <div class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-300">Solo Builder</div>
+                    </div>
+                    <p class="text-gray-400 text-sm leading-relaxed mb-8">10+ years in HR Management exposed a critical gap: existing tools don't understand the nuance of human processes. I taught myself to code to build the platform that finally solves the chaos I lived through every day.</p>
+                    <div class="flex justify-center gap-6">
+                        <a href="https://www.linkedin.com/in/saeedvaali/" target="_blank" class="text-gray-400 hover:text-white transition-colors"><i class="fab fa-linkedin text-2xl"></i></a>
+                        <a href="mailto:info@theatomicwork.com" class="text-gray-400 hover:text-white transition-colors"><i class="fas fa-envelope text-2xl"></i></a>
+                        <a href="tel:+61424288817" class="text-gray-400 hover:text-white transition-colors"><i class="fas fa-phone text-2xl"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="slide-16">
+        <div class="text-center">
+             <div class="w-20 h-20 mx-auto bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center text-4xl mb-8 shadow-[0_0_50px_rgba(6,182,212,0.6)] animate-float"><i class="fas fa-atom text-white"></i></div>
+            <h2 class="text-6xl font-black mb-8">Ready to Scale?</h2>
+            <p class="text-xl text-gray-300 mb-12">Standardize. Automate. Monetize.</p>
+            <div class="flex justify-center gap-6">
+                <button class="bg-white text-black px-10 py-4 rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-[0_0_40px_white]">Get Early Access</button>
+                <button class="px-10 py-4 rounded-full font-bold text-lg border border-gray-600 hover:bg-white/5 transition-colors">View Documentation</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 16;
+        const progressBar = document.getElementById('progress');
+        const slideNum = document.getElementById('slide-num');
+
+        function updateProgress() {
+            if (progressBar && slideNum) {
+                const percent = ((currentSlide - 1) / (totalSlides - 1)) * 100;
+                progressBar.style.width = `${percent}%`;
+                slideNum.innerText = (currentSlide < 10 ? '0' : '') + currentSlide + '/' + totalSlides;
+            }
+        }
+
+        function showSlide(index) {
+            document.querySelectorAll('.slide').forEach(slide => {
+                slide.style.display = 'none';
+                slide.classList.remove('active');
+            });
+            
+            const newSlide = document.getElementById(`slide-${index}`);
+            if (newSlide) {
+                newSlide.style.display = 'flex';
+                setTimeout(() => {
+                    newSlide.classList.add('active');
+                }, 10);
+            }
+            updateProgress();
+        }
+
+        function nextSlide() { 
+            if (currentSlide < totalSlides) { 
+                currentSlide++; 
+                showSlide(currentSlide); 
+            } 
+        }
+        
+        function prevSlide() { 
+            if (currentSlide > 1) { 
+                currentSlide--; 
+                showSlide(currentSlide); 
+            } 
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+
+        showSlide(currentSlide);
+        
+        window.addEventListener('load', function() {
+            const profileImg = document.querySelector('img[src="profile.png"]');
+            if (profileImg && profileImg.naturalWidth === 0) { profileImg.style.display = 'none'; document.getElementById('fallback-profile').style.display = 'flex'; }
+        });
+    </script>
+</body>
+</html>
